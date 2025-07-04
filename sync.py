@@ -1,64 +1,92 @@
 import os
 import json
 import zipfile
-from datetime import datetime
-from huggingface_hub import upload_folder, login
+import shutil
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from huggingface_hub import HfApi, login, upload_folder
 
-# Load credentials
-creds_dict = json.loads(os.environ['GDRIVE_KEY_JSON'])
+# service account and HF token come from GitHub secrets
+creds_dict = json.loads(os.environ["GDRIVE_KEY_JSON"])
+hf_token   = os.environ["HF_TOKEN"]
+
+# Google Drive
 creds = service_account.Credentials.from_service_account_info(
-    creds_dict, scopes=["https://www.googleapis.com/auth/drive.readonly"]
+    creds_dict,
+    scopes=["https://www.googleapis.com/auth/drive.readonly"]
 )
-drive_service = build('drive', 'v3', credentials=creds)
+drive = build("drive", "v3", credentials=creds)
 
-# Constants
-REPO_ID = 'testdeep123/image'
-HF_TOKEN = os.environ['HF_TOKEN']
-TMP_PATH = '/tmp/mc_backups'
-BACKUP_FOLDER_ID = '14FRN9M0TqeXPwYZDuRRQkMnpF4VaTDw_'
+# static values
+BACKUP_FOLDER_ID = "1OyWrHqFI3IrCbjV-Bkh_qC3XfYohXh-D"
+EXTRACT_DIR      = "/tmp/extracted_backups"
+TMP_ZIP_DIR      = "/tmp/zips"
+REPO_ID          = "testdeep123/image"
 
-# Login to Hugging Face
-login(token=HF_TOKEN)
+# ensure temp paths exist
+os.makedirs(EXTRACT_DIR, exist_ok=True)
+os.makedirs(TMP_ZIP_DIR, exist_ok=True)
 
-# Create temp directory
-os.makedirs(TMP_PATH, exist_ok=True)
+# sign in to Hugging Face
+login(token=hf_token)
 
-# List today's zip files
+# start with a clean dataset each run
+api = HfApi(token=hf_token)
+try:
+    api.delete_repo(repo_id=REPO_ID, repo_type="dataset")
+except Exception:
+    pass               # ignore if repo did not exist
+api.create_repo(repo_id=REPO_ID, repo_type="dataset", private=False)
 
+print("Dataset ready on Hugging Face")
+
+# list every zip in the Drive folder
 query = f"'{BACKUP_FOLDER_ID}' in parents and name contains '.zip'"
-results = drive_service.files().list(q=query, fields="files(id, name)").execute()
-files = results.get('files', [])
+result = drive.files().list(q=query, fields="files(id,name)").execute()
+zip_files = result.get("files", [])
 
-if not files:
-    print("No new zip files today.")
-    exit(0)
+if not zip_files:
+    print("No zip files found in Google Drive backup folder")
+    quit()
 
-# Download and extract
-for f in files:
-    request = drive_service.files().get_media(fileId=f['id'])
-    zip_path = os.path.join(TMP_PATH, f['name'])
+for item in zip_files:
+    fid   = item["id"]
+    fname = item["name"]
+    zip_path = os.path.join(TMP_ZIP_DIR, fname)
 
-    with open(zip_path, 'wb') as out_file:
-        out_file.write(request.execute())
+    # download the zip
+    request = drive.files().get_media(fileId=fid)
+    with open(zip_path, "wb") as fh:
+        fh.write(request.execute())
+    print(f"Downloaded {fname}")
 
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(TMP_PATH)
+    # unzip
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        zf.extractall(EXTRACT_DIR)
+    print(f"Extracted {fname}")
 
-# Upload each subfolder to Hugging Face
-subfolders = ['world', 'world_nether', 'world_the_end', 'plugins']
-for folder in subfolders:
-    path = os.path.join(TMP_PATH, folder)
+# upload folders
+targets = {
+    "world":        os.path.join(EXTRACT_DIR, "world"),
+    "world_nether": os.path.join(EXTRACT_DIR, "world_nether"),
+    "world_the_end":os.path.join(EXTRACT_DIR, "world_the_end"),
+    "plugins":      os.path.join(EXTRACT_DIR, "plugins")
+}
+
+for name, path in targets.items():
     if os.path.isdir(path):
-        print(f"Uploading: {folder}")
+        print(f"Uploading {name}")
         upload_folder(
-            repo_id=REPO_ID,
-            folder_path=path,
-            path_in_repo=folder,
-            repo_type='dataset',
-            token=HF_TOKEN,
-            commit_message=f"Upload {folder}"
+            repo_id       = REPO_ID,
+            folder_path   = path,
+            repo_type     = "dataset",
+            token         = hf_token,
+            path_in_repo  = name,
+            commit_message= f"Upload {name}"
         )
 
-print("Backup upload complete.")
+print("All folders processed, backup complete")
+
+# tidy up temp space
+shutil.rmtree(TMP_ZIP_DIR,   ignore_errors=True)
+shutil.rmtree(EXTRACT_DIR,   ignore_errors=True)

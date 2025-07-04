@@ -26,8 +26,8 @@ login(token=HF_TOKEN)
 os.makedirs(TMP_PATH, exist_ok=True)
 
 # List today's zip files
-today = datetime.utcnow().strftime('%Y-%m-%d')
-query = f"'{BACKUP_FOLDER_ID}' in parents and name contains '.zip' and modifiedTime >= '{today}T00:00:00'"
+
+query = f"'{BACKUP_FOLDER_ID}' in parents and name contains '.zip'"
 results = drive_service.files().list(q=query, fields="files(id, name)").execute()
 files = results.get('files', [])
 

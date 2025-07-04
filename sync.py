@@ -18,7 +18,7 @@ creds = service_account.Credentials.from_service_account_info(
 drive = build("drive", "v3", credentials=creds)
 
 # static values
-BACKUP_FOLDER_ID = "14FRN9M0TqeXPwYZDuRRQkMnpF4VaTDw_"
+BACKUP_FOLDER_ID = "16WjhPt4noZIB33_I4CQtH38LhxYNbvXr"
 EXTRACT_DIR      = "/tmp/extracted_backups"
 TMP_ZIP_DIR      = "/tmp/zips"
 REPO_ID          = "testdeep123/image"

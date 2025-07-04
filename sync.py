@@ -17,7 +17,7 @@ drive_service = build('drive', 'v3', credentials=creds)
 REPO_ID = 'testdeep123/image'
 HF_TOKEN = os.environ['HF_TOKEN']
 TMP_PATH = '/tmp/mc_backups'
-BACKUP_FOLDER_ID = '1OyWrHqFI3IrCbjV-Bkh_qC3XfYohXh-D'
+BACKUP_FOLDER_ID = '14FRN9M0TqeXPwYZDuRRQkMnpF4VaTDw_'
 
 # Login to Hugging Face
 login(token=HF_TOKEN)

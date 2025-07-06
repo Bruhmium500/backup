@@ -1,17 +1,17 @@
-name: Backup and Upload
+name: Backup to HuggingFace
 
 on:
   schedule:
-    - cron: "0 */12 * * *"  # Every 12 hours
-  workflow_dispatch:        # Allows manual trigger
+    - cron: "0 */12 * * *" # Every 12 hours (UTC)
+  workflow_dispatch:
 
 jobs:
-  run-script:
+  upload:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+    - name: Checkout repo
+      uses: actions/checkout@v4
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -23,7 +23,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run backup upload script
+    - name: Run backup script
       env:
         HF_TOKEN: ${{ secrets.HF_TOKEN }}
       run: python script.py

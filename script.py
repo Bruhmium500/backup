@@ -6,7 +6,7 @@ from huggingface_hub import HfApi, upload_folder, login
 FOLDER_URL = "https://drive.google.com/drive/folders/1OyWrHqFI3IrCbjV-Bkh_qC3XfYohXh-D"
 DOWNLOAD_DIR = "backups"
 EXTRACT_DIR = "extracted_backups"
-REPO_ID = "testdeep123/image"
+REPO_ID = "OrbitMC/minecraft"
 HF_TOKEN = os.getenv("HF_TOKEN")
 
 # Clean dirs
